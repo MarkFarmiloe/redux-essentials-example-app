@@ -26,7 +26,7 @@ export async function client<T>(
   if (body) {
     config.body = JSON.stringify(body)
   }
-
+  
   let data
   try {
     const response = await window.fetch(endpoint, config)

@@ -133,10 +133,12 @@ for (let i = 0; i < NUM_USERS; i++) {
   }
 }
 
-const serializePost = (post: Post) => ({
-  ...post,
-  user: post.user!.id,
-})
+const serializePost = (post: Post) => {
+  return {
+    ...post,
+    userId: post.user!.id,
+  }
+}
 
 /* MSW REST API Handlers */
 
@@ -169,7 +171,7 @@ export const handlers = [
     }
 
     data.date = new Date().toISOString()
-    const userId = data.user as string
+    const userId = data.userId as string
 
     const user = db.user.findFirst({ where: { id: { equals: userId } } })
     data.user = user
@@ -228,7 +230,7 @@ export const handlers = [
     await delay(ARTIFICIAL_DELAY_MS)
     return HttpResponse.json(serializePost(updatedPost))
   }),
-  http.get('/fakeApi/notifications', async ({ request, params }) => {
+  http.get('/fakeApi/notifications', async ({ request }) => {
     const parsedUrl = new URL(request.url)
     const since = parsedUrl.searchParams.get('since') ?? undefined
     const numNotifications = getRandomInt(1, 5)
