@@ -35,7 +35,7 @@ const initialReactions: Reactions = {
   eyes: 0,
 }
 
-type PostAdd = Pick<Post, 'title' | 'content' | 'userId'>
+export type NewPost = Pick<Post, 'title' | 'content' | 'userId'>
 type PostUpdate = Pick<Post, 'id' | 'title' | 'content'>
 
 interface PostsState extends EntityState<Post, string> {
@@ -84,7 +84,7 @@ const postsSlice = createAppSlice({
         },
       ),
       postAdded: create.asyncThunk(
-        async (newPost: PostAdd) => {
+        async (newPost: NewPost) => {
           const response = await client.post<Post>('/fakeApi/posts', newPost)
           return response.data
         },

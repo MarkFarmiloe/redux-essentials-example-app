@@ -1,30 +1,28 @@
+import React from 'react'
 import { Link, useParams } from 'react-router-dom'
 
+import { useGetPostQuery } from '@/api/apiSlice'
 import { useAppSelector } from '@/app/hooks'
-import { selectCurrentUserId } from '../auth/authSlice'
-import { selectPostById } from './postsSlice'
-import { PostAuthor } from './PostAuthor'
+import { Spinner } from '@/components/Spinner'
 import { TimeAgo } from '@/components/TimeAgo'
+import { selectCurrentUserId } from '@/features/auth/authSlice'
+
+import { PostAuthor } from './PostAuthor'
 import { ReactionButtons } from './ReactionButtons'
 
 export const SinglePostPage = () => {
   const { postId } = useParams()
-
-  const post = useAppSelector((state) => selectPostById(state, postId!))
-
-  if (!post) {
-    return (
-      <section>
-        <h2>Post not found!</h2>
-      </section>
-    )
-  }
-
   const currentUserId = useAppSelector(selectCurrentUserId)!
-  const canEdit = currentUserId === post.userId
+  const { data: post, isFetching, isSuccess } = useGetPostQuery(postId!)
 
-  return (
-    <section>
+  const canEdit = currentUserId === post?.userId
+
+  let content: React.ReactNode
+
+  if (isFetching) {
+    content = <Spinner text="Loading..." />
+  } else if (isSuccess) {
+    content = (
       <article className="post">
         <h2>{post.title}</h2>
         <p>
@@ -41,6 +39,8 @@ export const SinglePostPage = () => {
           </Link>
         ) : null}
       </article>
-    </section>
-  )
+    )
+  }
+
+  return <section>{content}</section>
 }
