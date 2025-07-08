@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom'
+import { ToastContainer } from 'react-tiny-toast'
 
 import { useAppSelector } from './app/hooks'
 import { Navbar } from './components/Navbar'
@@ -28,26 +29,25 @@ function App() {
     <Router>
       <Navbar />
       <div className="App">
-        <div className="App">
-          <Routes>
-            <Route path="/" element={<LoginPage />} />
-            <Route
-              path="/*"
-              element={
-                <ProtectedRoute>
-                  <Routes>
-                    <Route path="/posts" element={<PostsMainPage />}></Route>
-                    <Route path="/posts/:postId" element={<SinglePostPage />}></Route>
-                    <Route path="/editPost/:postId" element={<EditPostForm />}></Route>
-                    <Route path="/users" element={<UsersList />} />
-                    <Route path="/users/:userId" element={<UserPage />} />
-                    <Route path="/notifications" element={<NotificationsList />} />
-                  </Routes>
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </div>
+        <Routes>
+          <Route path="/" element={<LoginPage />} />
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <Routes>
+                  <Route path="/posts" element={<PostsMainPage />}></Route>
+                  <Route path="/posts/:postId" element={<SinglePostPage />}></Route>
+                  <Route path="/editPost/:postId" element={<EditPostForm />}></Route>
+                  <Route path="/users" element={<UsersList />} />
+                  <Route path="/users/:userId" element={<UserPage />} />
+                  <Route path="/notifications" element={<NotificationsList />} />
+                </Routes>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+        <ToastContainer />
       </div>
     </Router>
   )

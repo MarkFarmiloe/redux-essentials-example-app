@@ -1,7 +1,8 @@
-import { createSlice, createAsyncThunk, createSelector, PayloadAction } from '@reduxjs/toolkit'
+import { createEntityAdapter, createSelector, EntityState, PayloadAction } from '@reduxjs/toolkit'
+import { toast } from 'react-tiny-toast'
 
 import { client } from '@/api/client'
-
+import { AppStartListening } from '@/app/listenerMiddleware'
 import { createAppSlice } from '@/app/withTypes'
 
 import { logout } from '@/features/auth/authSlice'
@@ -37,17 +38,20 @@ const initialReactions: Reactions = {
 type PostAdd = Pick<Post, 'title' | 'content' | 'userId'>
 type PostUpdate = Pick<Post, 'id' | 'title' | 'content'>
 
-interface PostsState {
-  items: Post[]
+interface PostsState extends EntityState<Post, string> {
   status: 'idle' | 'loading' | 'complete' | 'failed'
   error: string | null
 }
 
-const initialState: PostsState = {
-  items: [],
+const postsAdapter = createEntityAdapter<Post>({
+  // Sort in descending date order
+  sortComparer: (a, b) => b.date.localeCompare(a.date),
+})
+
+const initialState: PostsState = postsAdapter.getInitialState({
   status: 'idle',
   error: null,
-}
+})
 
 const postsSlice = createAppSlice({
   name: 'posts',
@@ -61,17 +65,17 @@ const postsSlice = createAppSlice({
         },
         {
           options: {
-            condition(arg, thunkApi) {
+            condition(_unused, thunkApi) {
               const { posts } = thunkApi.getState() as { posts: PostsState }
               return posts.status === 'idle'
             },
           },
-          pending: (state, action) => {
+          pending: (state) => {
             state.status = 'loading'
           },
           fulfilled: (state, action) => {
             state.status = 'complete'
-            state.items.push(...action.payload)
+            postsAdapter.setAll(state, action.payload)
           },
           rejected: (state, action) => {
             state.status = 'failed'
@@ -85,23 +89,16 @@ const postsSlice = createAppSlice({
           return response.data
         },
         {
-          fulfilled: (state, action) => {
-            state.status = 'complete'
-            state.items.push(action.payload)
-          },
+          fulfilled: postsAdapter.addOne,
         },
       ),
       postUpdated: create.reducer<PostUpdate>((postsState, action: PayloadAction<PostUpdate>) => {
         const { id, title, content } = action.payload
-        const existingPost = postsState.items.find((post) => post.id === id)
-        if (existingPost) {
-          existingPost.title = title
-          existingPost.content = content
-        }
+        postsAdapter.updateOne(postsState, { id, changes: { title, content } })
       }),
       reactionAdded: create.reducer<{ postId: string; reaction: ReactionName }>((postsState, action) => {
         const { postId, reaction } = action.payload
-        const existingPost = postsState.items.find((post) => post.id === postId)
+        const existingPost = postsState.entities[postId]
         if (existingPost) {
           existingPost.reactions[reaction]++
         }
@@ -114,8 +111,6 @@ const postsSlice = createAppSlice({
     })
   },
   selectors: {
-    selectAllPosts: (postsState) => postsState.items,
-    selectPostById: (postsState, postId: string) => postsState.items.find((post) => post.id === postId),
     selectPostsStatus: (postsState) => postsState.status,
     selectPostsError: (postsState) => postsState.error,
   },
@@ -123,11 +118,34 @@ const postsSlice = createAppSlice({
 
 export const { fetchPosts, postAdded, postUpdated, reactionAdded } = postsSlice.actions
 
+export const {
+  selectAll: selectAllPosts,
+  selectById: selectPostById,
+  selectIds: selectPostIds,
+  // Pass in a selector that returns the posts slice of state
+} = postsAdapter.getSelectors((state: RootState) => state.posts)
+
 export const selectPostsByUser = createSelector(
-  [postsSlice.selectors.selectAllPosts, (state: RootState, userId: string) => userId],
-  (posts, userId: string) => posts.filter((post) => post.userId === userId),
+  [selectAllPosts, (state: RootState, userId: string) => userId],
+  (posts, userId) => posts.filter((post) => post.userId === userId),
 )
 
-export const { selectAllPosts, selectPostById, selectPostsStatus, selectPostsError } = postsSlice.selectors
+export const { selectPostsStatus, selectPostsError } = postsSlice.selectors
+
+export const addPostsListeners = (startAppListening: AppStartListening) => {
+  startAppListening({
+    actionCreator: postAdded.fulfilled,
+    effect: async (action, listenerApi) => {
+      const toastId = toast.show('New post added!', {
+        variant: 'success',
+        position: 'bottom-right',
+        pause: true
+      })
+
+      await listenerApi.delay(5000)
+      toast.remove(toastId)
+    }
+  })
+}
 
 export default postsSlice.reducer
